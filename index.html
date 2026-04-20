@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Internship ROI Predictor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface2: #1a1a26;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --accent: #7c6dfa;
+  --accent2: #fa6d9a;
+  --green: #4dffa0;
+  --text: #f0eff8;
+  --muted: #888799;
+  --radius: 10px;
+}
+
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+
+.page { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+/* Header */
+.badge { display: inline-block; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(124,109,250,0.4); border-radius: 3px; padding: 3px 9px; margin-bottom: 1.2rem; }
+h1 { font-size: clamp(32px, 6vw, 52px); font-weight: 800; line-height: 1.0; letter-spacing: -0.03em; margin-bottom: 0.6rem; }
+h1 em { color: var(--accent); font-style: normal; }
+.subtitle { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); letter-spacing: 0.04em; margin-bottom: 3rem; }
+
+/* Card */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin-bottom: 1.25rem; }
+.card-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.25rem; }
+
+/* Form */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
+.form-group { display: flex; flex-direction: column; gap: 7px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; }
+input, select {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  padding: 11px 13px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  -webkit-appearance: none;
+}
+input::placeholder { color: var(--muted); }
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,109,250,0.12); }
+select option { background: #1a1a26; color: var(--text); }
+
+/* Button */
+.btn {
+  width: 100%; padding: 15px;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 8px;
+  font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700;
+  letter-spacing: 0.02em; cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  margin-top: 1.25rem;
+}
+.btn:hover { opacity: 0.88; }
+.btn:active { transform: scale(0.99); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+/* Stats */
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; margin-bottom: 1.5rem; }
+.stat { background: rgba(124,109,250,0.08); border: 1px solid rgba(124,109,250,0.18); border-radius: 8px; padding: 1.1rem; }
+.stat-val { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; color: var(--accent); }
+.stat-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 4px; letter-spacing: 0.05em; }
+.stat-ci { font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(124,109,250,0.5); margin-top: 2px; }
+
+/* Chart */
+.chart-wrap { position: relative; height: 200px; margin-bottom: 1.25rem; }
+
+/* What-if */
+.section-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+.toggle-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.toggle {
+  padding: 6px 14px; border: 1px solid var(--border2);
+  border-radius: 20px; font-size: 12px; font-family: 'DM Mono', monospace;
+  color: var(--muted); cursor: pointer; background: transparent;
+  transition: all 0.18s;
+}
+.toggle:hover { border-color: var(--accent); color: var(--accent); }
+.toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(124,109,250,0.1); }
+
+/* Compare */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 1rem; }
+.compare-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1.1rem; transition: border-color 0.2s; }
+.compare-card.winner { border-color: rgba(77,255,160,0.35); background: rgba(77,255,160,0.05); }
+.compare-title { font-size: 12px; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px; }
+.compare-val { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; }
+.compare-card.winner .compare-val { color: var(--green); }
+.win-badge { font-size: 9px; font-family: 'DM Mono', monospace; background: var(--green); color: #0a0a0f; border-radius: 2px; padding: 2px 6px; letter-spacing: 0.08em; white-space: nowrap; }
+
+/* Insight */
+.insight { background: rgba(250,109,154,0.07); border-left: 2px solid var(--accent2); border-radius: 0 7px 7px 0; padding: 0.85rem 1.1rem; font-size: 13.5px; color: var(--muted); line-height: 1.65; }
+.insight strong { color: var(--text); }
+
+/* Source tag */
+.source-tag { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(136,135,153,0.5); margin-top: 1rem; text-align: right; }
+
+/* States */
+.results { display: none; }
+.results.visible { display: block; }
+.loading { display: none; text-align: center; padding: 2.5rem; }
+.loading.visible { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+.spinner { width: 28px; height: 28px; border: 2px solid rgba(124,109,250,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.06em; }
+
+.error { background: rgba(250,109,154,0.08); border: 1px solid rgba(250,109,154,0.25); border-radius: 8px; padding: 1rem 1.25rem; font-family: 'DM Mono', monospace; font-size: 12px; color: #fa6d9a; display: none; margin-top: 1rem; }
+.error.visible { display: block; }
+
+@media (max-width: 520px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.full { grid-column: 1; }
+  .stat-row { grid-template-columns: 1fr 1fr; }
+  .stat-row .stat:last-child { grid-column: 1 / -1; }
+  .compare-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="badge">Career Analytics · Powered by DOL H1B Data</div>
+  <h1>Internship <em>ROI</em><br>Predictor</h1>
+  <p class="subtitle">// model your 5-year salary trajectory · xgboost trained on 600k+ real offers</p>
+
+  <!-- Input form -->
+  <div class="card">
+    <div class="card-label">Offer Details</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Company Name</label>
+        <input type="text" id="company" placeholder="e.g. Google, Stripe, McKinsey" />
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="role">
+          <option value="">Select role...</option>
+          <option value="swe">Software Engineering</option>
+          <option value="ds">Data Science / ML</option>
+          <option value="pm">Product Management</option>
+          <option value="finance">Finance / Quant</option>
+          <option value="consulting">Consulting</option>
+          <option value="design">Design / UX</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Industry</label>
+        <select id="industry">
+          <option value="">Select industry...</option>
+          <option value="bigtech">Big Tech</option>
+          <option value="startup">Startup</option>
+          <option value="finance">Finance / Banking</option>
+          <option value="consulting">Consulting</option>
+          <option value="healthcare">Healthcare / Biotech</option>
+          <option value="retail">Retail / Consumer</option>
+          <option value="gov">Government / Nonprofit</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Internship Pay ($/hr)</label>
+        <input type="number" id="pay" placeholder="e.g. 45" min="10" max="200" step="0.5" />
+      </div>
+      <div class="form-group">
+        <label>Location</label>
+        <select id="location">
+          <option value="">Select location...</option>
+          <option value="sf">San Francisco / Bay Area</option>
+          <option value="nyc">New York City</option>
+          <option value="seattle">Seattle</option>
+          <option value="austin">Austin</option>
+          <option value="chicago">Chicago</option>
+          <option value="boston">Boston</option>
+          <option value="remote">Remote</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" id="predict-btn" onclick="runPrediction()">Predict My Trajectory →</button>
+    <div class="error" id="error-msg"></div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">// running xgboost model on h1b data...</div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+
+    <div class="card">
+      <div class="card-label">5-Year Salary Projection</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-val" id="yr1-val">—</div>
+          <div class="stat-label">Year 1</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="yr3-val">—</div>
+          <div class="stat-label">Year 3</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="yr5-val">—</div>
+          <div class="stat-label">Year 5</div>
+          <div class="stat-ci" id="yr5-ci"></div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <canvas id="salary-chart"></canvas>
+      </div>
+
+      <div class="section-label">// what-if scenarios</div>
+      <div class="toggle-row">
+        <button class="toggle" data-whatif="negotiate" onclick="applyWhatIf(this)">negotiate +10%</button>
+        <button class="toggle" data-whatif="relocate_sf" onclick="applyWhatIf(this)">relocate to SF</button>
+        <button class="toggle" data-whatif="mba" onclick="applyWhatIf(this)">get MBA (+yr 3)</button>
+        <button class="toggle" data-whatif="switch_bigtech" onclick="applyWhatIf(this)">switch to big tech</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">vs. Industry Average</div>
+      <div class="compare-grid">
+        <div class="compare-card" id="card-yours">
+          <div class="compare-title" id="card-yours-title">Your Offer</div>
+          <div class="compare-val" id="card-yours-val">—</div>
+          <div class="stat-label" style="margin-top:5px">5-yr projected</div>
+        </div>
+        <div class="compare-card" id="card-avg">
+          <div class="compare-title" id="card-avg-title">Industry Avg</div>
+          <div class="compare-val" id="card-avg-val">—</div>
+          <div class="stat-label" style="margin-top:5px">5-yr projected</div>
+        </div>
+      </div>
+      <div class="insight" id="insight"></div>
+      <div class="source-tag" id="source-tag"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:8000";
+let chartInstance = null;
+let lastResult = null;
+let activeWhatIf = null;
+
+function fmt(n) {
+  return '$' + Math.round(n / 1000) + 'k';
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function clearError() {
+  document.getElementById('error-msg').classList.remove('visible');
+}
+
+async function runPrediction() {
+  clearError();
+  const pay = parseFloat(document.getElementById('pay').value);
+  const role = document.getElementById('role').value;
+  const industry = document.getElementById('industry').value;
+  const location = document.getElementById('location').value;
+
+  if (!pay || !role || !industry || !location) {
+    showError('Please fill in all fields before predicting.');
+    return;
+  }
+
+  const btn = document.getElementById('predict-btn');
+  btn.disabled = true;
+  document.getElementById('loading').classList.add('visible');
+  document.getElementById('results').classList.remove('visible');
+  document.querySelectorAll('.toggle').forEach(t => t.classList.remove('active'));
+  activeWhatIf = null;
+
+  try {
+    const res = await fetch(`${API}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hourly_pay: pay, role, industry, location }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Prediction failed.');
+    }
+
+    lastResult = await res.json();
+    renderResults(lastResult);
+  } catch (e) {
+    showError(e.message.includes('Failed to fetch')
+      ? 'Cannot reach API. Make sure the backend is running: uvicorn main:app --reload'
+      : e.message);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('loading').classList.remove('visible');
+  }
+}
+
+async function applyWhatIf(btn) {
+  if (!lastResult) return;
+
+  const whatif = btn.dataset.whatif;
+  const isSame = activeWhatIf === whatif;
+
+  document.querySelectorAll('.toggle').forEach(t => t.classList.remove('active'));
+  activeWhatIf = isSame ? null : whatif;
+
+  const pay = parseFloat(document.getElementById('pay').value);
+  const role = document.getElementById('role').value;
+  const industry = document.getElementById('industry').value;
+  const location = document.getElementById('location').value;
+
+  if (!isSame) {
+    btn.classList.add('active');
+    try {
+      const res = await fetch(`${API}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hourly_pay: pay, role, industry, location, what_if: whatif }),
+      });
+      const data = await res.json();
+      renderResults(data, whatif);
+    } catch {
+      renderResults(lastResult);
+    }
+  } else {
+    renderResults(lastResult);
+  }
+}
+
+function renderResults(data, whatif = null) {
+  const proj = whatif && data.what_if_projection ? data.what_if_projection : data.projection;
+  const avg = data.industry_avg_projection;
+  const company = document.getElementById('company').value || 'Your Offer';
+  const ci = data.confidence_interval;
+
+  document.getElementById('yr1-val').textContent = fmt(proj[1]);
+  document.getElementById('yr3-val').textContent = fmt(proj[3]);
+  document.getElementById('yr5-val').textContent = fmt(proj[5]);
+  document.getElementById('yr5-ci').textContent = `range: ${fmt(ci.low)}–${fmt(ci.high)}`;
+
+  renderChart(proj, avg);
+
+  const isWinner = proj[5] > avg[5];
+  const diff = Math.abs(proj[5] - avg[5]);
+  const direction = isWinner ? 'above' : 'below';
+
+  const cardYours = document.getElementById('card-yours');
+  const cardAvg = document.getElementById('card-avg');
+  cardYours.classList.toggle('winner', isWinner);
+  cardAvg.classList.toggle('winner', !isWinner);
+
+  const winBadge = '<span class="win-badge">BETTER ↑</span>';
+  document.getElementById('card-yours-title').innerHTML = isWinner ? company + ' ' + winBadge : company;
+  document.getElementById('card-avg-title').innerHTML = !isWinner ? 'Industry Avg ' + winBadge : 'Industry Avg';
+  document.getElementById('card-yours-val').textContent = fmt(proj[5]);
+  document.getElementById('card-avg-val').textContent = fmt(avg[5]);
+
+  const scenario = whatif ? ` (with ${whatif.replace('_', ' ')} applied)` : '';
+  document.getElementById('insight').innerHTML = `<strong>5-year outlook${scenario}:</strong> This trajectory puts you ${fmt(diff)} ${direction} the industry average. ${isWinner ? 'Strong positioning — negotiate your first full-time offer hard to lock in this lead.' : 'Consider targeting higher-paying industries or negotiating aggressively on your first offer to close the gap.'}`;
+
+  document.getElementById('source-tag').textContent = '// ' + data.model_source;
+  document.getElementById('results').classList.add('visible');
+}
+
+function renderChart(proj, avg) {
+  const labels = ['Base', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5'];
+  const ctx = document.getElementById('salary-chart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Your Trajectory',
+          data: proj,
+          borderColor: '#7c6dfa',
+          backgroundColor: 'rgba(124,109,250,0.07)',
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: '#7c6dfa',
+          pointRadius: 4,
+          borderWidth: 2.5,
+        },
+        {
+          label: 'Industry Avg',
+          data: avg,
+          borderColor: 'rgba(136,135,153,0.4)',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.4,
+          pointBackgroundColor: 'rgba(136,135,153,0.4)',
+          pointRadius: 3,
+          borderWidth: 1.5,
+          borderDash: [4, 4],
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: '#888799', font: { family: 'DM Mono', size: 11 }, boxWidth: 12, padding: 16 }
+        },
+        tooltip: {
+          callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + fmt(ctx.raw) },
+          backgroundColor: '#12121a',
+          borderColor: 'rgba(124,109,250,0.3)',
+          borderWidth: 1,
+          titleColor: '#888799',
+          bodyColor: '#f0eff8',
+          titleFont: { family: 'DM Mono' },
+          bodyFont: { family: 'DM Mono' },
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#888799', font: { family: 'DM Mono', size: 11 } }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#888799', font: { family: 'DM Mono', size: 11 }, callback: v => fmt(v) }
+        }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
