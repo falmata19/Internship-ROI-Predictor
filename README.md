@@ -86,7 +86,3 @@ internship-roi/
     └── index.html         # Full UI, hits localhost:8000
 ```
 
-## Resume bullets (once you build it)
-- Trained an XGBoost regression model on 600k+ DOL H1B salary disclosure records to predict 5-year compensation trajectories
-- Built a FastAPI backend with a `/predict` endpoint serving real-time inference with what-if scenario modeling
-- Developed a full-stack web application enabling students to compare internship offers against industry benchmarks using live model predictions
